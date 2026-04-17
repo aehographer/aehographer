@@ -1,0 +1,45 @@
+/* Global Styles — Dark Minimal Theme */
+:root {
+  /* 깊은 바다 + 등대 골드 */
+  --bg: #0b1221;
+  --bg-secondary: #111c2e;
+  --text: #b8c5d4;
+  --text-heading: #e3e9f0;
+  --accent: #e3bc5e;
+  --accent-hover: #dfcc9e;
+  --accent-secondary: #4fa8c9;
+  --border: #1e2a3a;
+  --max-width: 62rem;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+}
+
+body {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+img {
+  max-width: 100%;
+  border-radius: 8px;
+}

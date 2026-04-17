@@ -1,0 +1,297 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const items = (await getCollection('aeho'))
+  .filter((item) => !item.data.draft)
+  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+
+const mainCategories = ['전체', '책', '공연', '전시', '영화', '기타'] as const;
+
+// 대분류별 소분류 매핑 (하위 분류가 있는 것만)
+const subCategoriesMap: Record<string, string[]> = {
+  '책': ['소설', '에세이', '인문사회', '문화예술', '경영경제', '자기계발', '기타'],
+  '공연': ['뮤지컬', '연극', '클래식', '발레', '창극/국악'],
+  '전시': ['미술', '사진', '디자인', '미디어아트', '기타'],
+  '영화': ['극영화', '다큐멘터리', '애니메이션', '단편/독립'],
+  '기타': ['영상', '음악', '공간'],
+};
+---
+
+<BaseLayout title="aeho — 애호">
+  <section class="page-header">
+    <h1>aeho</h1>
+    <p class="subtitle">사랑하고 좋아하는 것들</p>
+  </section>
+
+  <div class="filters">
+    <div class="filter-row" id="main-filters">
+      {mainCategories.map((cat) => (
+        <button class="filter-btn main-btn" data-main={cat === '전체' ? 'all' : cat}>
+          {cat}
+        </button>
+      ))}
+    </div>
+    {Object.entries(subCategoriesMap).map(([main, subs]) => (
+      <div class="filter-row sub-row" data-for-main={main} style="display:none;">
+        <button class="filter-btn sub-btn active" data-sub="all">전체</button>
+        {subs.map((s) => (
+          <button class="filter-btn sub-btn" data-sub={s}>{s}</button>
+        ))}
+      </div>
+    ))}
+  </div>
+
+  <div class="grid">
+    {items.map((item) => {
+      const mainTag = item.data.tags[0] || '';
+      const subTag = item.data.tags[1] || '';
+      return (
+        <a href={`/aeho/${item.id}`} class="card" data-main={mainTag} data-sub={subTag}>
+          <div class="card-image">
+            {item.data.image ? (
+              <img src={item.data.image} alt={item.data.title} />
+            ) : (
+              <div class="card-placeholder">{subTag || mainTag}</div>
+            )}
+          </div>
+          <div class="card-info">
+            <span class="card-category">{subTag || mainTag}</span>
+            <h3>{item.data.title}</h3>
+            {item.data.oneliner && <p class="card-oneliner">{item.data.oneliner}</p>}
+          </div>
+        </a>
+      );
+    })}
+  </div>
+</BaseLayout>
+
+<script>
+  const mainBtns = document.querySelectorAll('.main-btn');
+  const subRows = document.querySelectorAll('.sub-row');
+  const cards = document.querySelectorAll('.card');
+
+  let activeMain = 'all';
+  let activeSub = 'all';
+
+  function applyFilters() {
+    cards.forEach((card) => {
+      const el = card as HTMLElement;
+      const main = el.dataset.main;
+      const sub = el.dataset.sub;
+      const matchMain = activeMain === 'all' || main === activeMain;
+      const matchSub = activeSub === 'all' || sub === activeSub;
+
+      if (matchMain && matchSub) {
+        el.style.display = '';
+      } else {
+        el.style.display = 'none';
+      }
+    });
+  }
+
+  function alignSubRow(mainBtn: Element, subEl: HTMLElement) {
+    const filtersContainer = document.querySelector('.filters') as HTMLElement;
+    const btnRect = mainBtn.getBoundingClientRect();
+    const containerRect = filtersContainer.getBoundingClientRect();
+    subEl.style.marginLeft = `${btnRect.left - containerRect.left}px`;
+  }
+
+  function showSubRow(main: string, activeBtn: Element) {
+    subRows.forEach((row) => {
+      const el = row as HTMLElement;
+      if (el.dataset.forMain === main) {
+        el.style.display = '';
+        el.querySelectorAll('.sub-btn').forEach((b) => b.classList.remove('active'));
+        el.querySelector('.sub-btn')?.classList.add('active');
+        alignSubRow(activeBtn, el);
+      } else {
+        el.style.display = 'none';
+      }
+    });
+    activeSub = 'all';
+  }
+
+  // 소분류 버튼 이벤트
+  subRows.forEach((row) => {
+    row.querySelectorAll('.sub-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        row.querySelectorAll('.sub-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeSub = (btn as HTMLElement).dataset.sub!;
+        applyFilters();
+      });
+    });
+  });
+
+  // 대분류 버튼 이벤트
+  mainBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      mainBtns.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeMain = (btn as HTMLElement).dataset.main!;
+      showSubRow(activeMain, btn);
+      applyFilters();
+    });
+  });
+
+  // 기본값: 전체 선택
+  mainBtns[0]?.classList.add('active');
+</script>
+
+<style>
+  .page-header {
+    padding: 3rem 0 2rem;
+  }
+
+  .page-header h1 {
+    font-size: 2rem;
+    color: var(--text-heading);
+    margin-bottom: 0.3rem;
+  }
+
+  .subtitle {
+    color: #8b949e;
+  }
+
+  .filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .filter-btn {
+    background: var(--bg-secondary);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+
+  .filter-btn:hover,
+  .filter-btn.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
+  /* 소분류 서브필터: 작고 가벼운 텍스트 스타일 */
+  .sub-row {
+    position: relative;
+  }
+
+  .sub-btn {
+    background: transparent;
+    border: none;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.8rem;
+    color: #8b949e;
+    border-radius: 0;
+  }
+
+  .sub-btn:hover {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+  }
+
+  .sub-btn.active {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1.2rem 1rem;
+  }
+
+  .card {
+    color: var(--text);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: transform 0.2s;
+  }
+
+  .card:hover {
+    transform: translateY(-3px);
+  }
+
+  .card-image {
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--bg-secondary);
+  }
+
+  .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+
+  .card-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #484f58;
+    font-size: 0.8rem;
+    background: var(--bg-secondary);
+  }
+
+  .card-info {
+    padding: 0.55rem 0.15rem 0.2rem;
+  }
+
+  .card-category {
+    font-size: 0.7rem;
+    color: var(--accent);
+  }
+
+  .card-info h3 {
+    font-size: 0.85rem;
+    color: var(--text-heading);
+    margin: 0.15rem 0;
+    line-height: 1.35;
+  }
+
+  .card-oneliner {
+    font-size: 0.75rem;
+    color: #8b949e;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 960px) {
+    .grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (max-width: 720px) {
+    .grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem 0.8rem;
+    }
+  }
+</style>

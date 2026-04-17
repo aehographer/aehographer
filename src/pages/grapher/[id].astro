@@ -1,0 +1,91 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('grapher');
+  return posts.map((post) => ({ params: { id: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+
+<BaseLayout title={`${post.data.title} — grapher`}>
+  <article>
+    <a href="/grapher" class="back">← 목록으로</a>
+
+    <header>
+      <time>{post.data.date}</time>
+      <h1>{post.data.title}</h1>
+      <div class="tags">
+        {post.data.tags.map((tag) => (
+          <span class="tag">{tag}</span>
+        ))}
+      </div>
+    </header>
+
+    <div class="content">
+      <Content />
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  article {
+    padding: 2rem 0;
+  }
+
+  .back {
+    font-size: 0.85rem;
+    color: #8b949e;
+  }
+
+  .back:hover {
+    color: var(--accent);
+  }
+
+  header {
+    margin: 2rem 0 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  time {
+    font-size: 0.85rem;
+    color: #484f58;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    color: var(--text-heading);
+    margin: 0.5rem 0;
+  }
+
+  .tags {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .tag {
+    font-size: 0.75rem;
+    color: var(--accent);
+    background: rgba(227, 188, 94, 0.1);
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+  }
+
+  .content {
+    padding-top: 2rem;
+    line-height: 1.8;
+  }
+
+  .content :global(img) {
+    margin: 1.5rem 0;
+    border-radius: 8px;
+  }
+
+  .content :global(p) {
+    margin-bottom: 1.2rem;
+  }
+</style>

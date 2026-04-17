@@ -1,0 +1,204 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('grapher'))
+  .filter((p) => !p.data.draft)
+  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
+  .slice(0, 5);
+
+const featured = (await getCollection('aeho'))
+  .filter((p) => !p.data.draft && typeof p.data.featured === 'number')
+  .sort((a, b) => (a.data.featured as number) - (b.data.featured as number))
+  .slice(0, 5);
+---
+
+<BaseLayout title="aehographer">
+  <section class="intro">
+    <h1>aehographer</h1>
+    <p class="subtitle">사랑하고 좋아하는 것들을 기록합니다.</p>
+  </section>
+
+  {featured.length > 0 && (
+    <section class="featured">
+      <h2>요즘 좋아하는 것들</h2>
+      <div class="featured-grid">
+        {featured.map((item) => {
+          const sub = item.data.tags[1] || item.data.tags[0] || '';
+          return (
+            <a href={`/aeho/${item.id}`} class="card">
+              <div class="card-image">
+                {item.data.image ? (
+                  <img src={item.data.image} alt={item.data.title} />
+                ) : (
+                  <div class="card-placeholder">{sub}</div>
+                )}
+              </div>
+              <div class="card-info">
+                <span class="card-category">{sub}</span>
+                <h3>{item.data.title}</h3>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+      <a href="/aeho" class="view-all">aeho 전체 보기 →</a>
+    </section>
+  )}
+
+  <section class="recent">
+    <h2>최근 글</h2>
+    <ul>
+      {posts.map((post) => (
+        <li>
+          <a href={`/grapher/${post.id}`}>
+            <span class="post-title">{post.data.title}</span>
+            <span class="post-date">{post.data.date}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+    <a href="/grapher" class="view-all">모든 글 보기 →</a>
+  </section>
+</BaseLayout>
+
+<style>
+  .intro {
+    padding: 4rem 0 3rem;
+  }
+
+  .intro h1 {
+    font-size: 2.2rem;
+    color: var(--text-heading);
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle {
+    font-size: 1.1rem;
+    color: #8b949e;
+  }
+
+  .featured {
+    padding: 1rem 0 2rem;
+  }
+
+  .featured h2 {
+    font-size: 1.2rem;
+    color: var(--text-heading);
+    margin-bottom: 1.5rem;
+  }
+
+  .featured-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+  }
+
+  .featured-grid .card {
+    color: var(--text);
+    transition: transform 0.2s;
+  }
+
+  .featured-grid .card:hover {
+    transform: translateY(-3px);
+  }
+
+  .featured-grid .card-image {
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--bg-secondary);
+  }
+
+  .featured-grid .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+
+  .featured-grid .card-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #484f58;
+    font-size: 0.8rem;
+  }
+
+  .featured-grid .card-info {
+    padding: 0.55rem 0.15rem 0.2rem;
+  }
+
+  .featured-grid .card-category {
+    font-size: 0.7rem;
+    color: var(--accent);
+  }
+
+  .featured-grid .card-info h3 {
+    font-size: 0.85rem;
+    color: var(--text-heading);
+    margin: 0.15rem 0;
+    line-height: 1.35;
+  }
+
+  @media (max-width: 720px) {
+    .featured-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .featured-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .recent {
+    padding: 2rem 0;
+  }
+
+  .recent h2 {
+    font-size: 1.2rem;
+    color: var(--text-heading);
+    margin-bottom: 1.5rem;
+  }
+
+  .recent ul {
+    list-style: none;
+  }
+
+  .recent li {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .recent li a {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    color: var(--text);
+  }
+
+  .recent li a:hover .post-title {
+    color: var(--accent);
+  }
+
+  .post-title {
+    transition: color 0.2s;
+  }
+
+  .post-date {
+    font-size: 0.85rem;
+    color: #484f58;
+    flex-shrink: 0;
+    margin-left: 1rem;
+  }
+
+  .view-all {
+    display: inline-block;
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+  }
+</style>

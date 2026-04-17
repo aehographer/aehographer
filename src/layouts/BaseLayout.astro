@@ -1,0 +1,87 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+}
+
+const { title = 'aehographer' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛵</text></svg>" />
+  </head>
+  <body>
+    <nav>
+      <a href="/" class="nav-logo">⛵</a>
+      <div class="nav-links">
+        <a href="/aeho" class:list={[{ active: Astro.url.pathname.startsWith('/aeho') }]}>aeho</a>
+        <a href="/grapher" class:list={[{ active: Astro.url.pathname.startsWith('/grapher') }]}>grapher</a>
+      </div>
+    </nav>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <p>&copy; {new Date().getFullYear()} aehographer</p>
+    </footer>
+  </body>
+</html>
+
+<style>
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 1.2rem 1.5rem;
+    background: rgba(11, 18, 33, 0.85);
+    backdrop-filter: blur(12px);
+  }
+
+  .nav-logo {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-heading);
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .nav-links a {
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+
+  .nav-links a.active,
+  .nav-links a:hover {
+    color: var(--accent);
+  }
+
+  main {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  footer {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 3rem 1.5rem 2rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #484f58;
+    border-top: 1px solid var(--border);
+  }
+</style>

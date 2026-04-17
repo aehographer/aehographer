@@ -1,0 +1,280 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('grapher'))
+  .filter((p) => !p.data.draft)
+  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+
+const seriesTags = ['전체', '항해일지', '뼈문과표류기', '뮤덕부정기', '콘텐츠유영기', '셀프유배기'] as const;
+
+// 시리즈별 장르 태그 매핑
+const genresBySeriesMap: Record<string, string[]> = {};
+posts.forEach((post) => {
+  const series = post.data.tags[0];
+  const genre = post.data.tags[1];
+  if (series && genre) {
+    if (!genresBySeriesMap[series]) genresBySeriesMap[series] = [];
+    if (!genresBySeriesMap[series].includes(genre)) genresBySeriesMap[series].push(genre);
+  }
+});
+
+// 연도별 그룹핑
+const postsByYear: Record<string, typeof posts> = {};
+posts.forEach((post) => {
+  const year = post.data.date.slice(0, 4);
+  if (!postsByYear[year]) postsByYear[year] = [];
+  postsByYear[year].push(post);
+});
+const years = Object.keys(postsByYear).sort((a, b) => Number(b) - Number(a));
+---
+
+<BaseLayout title="grapher — 글">
+  <section class="page-header">
+    <h1>grapher</h1>
+    <p class="subtitle">기록하는 사람</p>
+  </section>
+
+  <div class="filters">
+    <div class="filter-row" id="series-filters">
+      {seriesTags.map((tag) => (
+        <button class="filter-btn series-btn" data-series={tag === '전체' ? 'all' : tag}>
+          {tag}
+        </button>
+      ))}
+    </div>
+    {Object.entries(genresBySeriesMap)
+      .filter(([_, genres]) => genres.length > 1)
+      .map(([series, genres]) => (
+        <div class="filter-row genre-row" data-for-series={series} style="display:none;">
+          <button class="filter-btn genre-btn active" data-genre="all">전체</button>
+          {genres.map((g) => (
+            <button class="filter-btn genre-btn" data-genre={g}>{g}</button>
+          ))}
+        </div>
+      ))
+    }
+  </div>
+
+  <div id="post-container">
+    {years.map((year) => (
+      <div class="year-group" data-year={year}>
+        <h3 class="year-label">{year}</h3>
+        <ul class="post-list">
+          {postsByYear[year].map((post) => {
+            const dateStr = post.data.date.slice(5).replace('-', '.');
+            return (
+              <li data-series={post.data.tags[0] || ''} data-genre={post.data.tags[1] || ''}>
+                <a href={`/grapher/${post.id}`}>
+                  <h2>{post.data.title}</h2>
+                  <span class="post-date">{dateStr}</span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    ))}
+  </div>
+</BaseLayout>
+
+<script>
+  const seriesBtns = document.querySelectorAll('.series-btn');
+  const genreRows = document.querySelectorAll('.genre-row');
+  const yearGroups = document.querySelectorAll('.year-group');
+
+  let activeSeries = 'all';
+  let activeGenre = 'all';
+
+  function applyFilters() {
+    yearGroups.forEach((group) => {
+      const items = group.querySelectorAll('li');
+      let visibleCount = 0;
+
+      items.forEach((item) => {
+        const el = item as HTMLElement;
+        const series = el.dataset.series;
+        const genre = el.dataset.genre;
+        const matchSeries = activeSeries === 'all' || series === activeSeries;
+        const matchGenre = activeGenre === 'all' || genre === activeGenre;
+
+        if (matchSeries && matchGenre) {
+          el.style.display = '';
+          visibleCount++;
+        } else {
+          el.style.display = 'none';
+        }
+      });
+
+      (group as HTMLElement).style.display = visibleCount > 0 ? '' : 'none';
+    });
+  }
+
+  function alignGenreRow(seriesBtn: Element, genreEl: HTMLElement) {
+    const filtersContainer = document.querySelector('.filters') as HTMLElement;
+    const btnRect = seriesBtn.getBoundingClientRect();
+    const containerRect = filtersContainer.getBoundingClientRect();
+    genreEl.style.marginLeft = `${btnRect.left - containerRect.left}px`;
+  }
+
+  function showGenreRow(series: string, activeBtn: Element) {
+    genreRows.forEach((row) => {
+      const el = row as HTMLElement;
+      if (el.dataset.forSeries === series) {
+        el.style.display = '';
+        el.querySelectorAll('.genre-btn').forEach((b) => b.classList.remove('active'));
+        el.querySelector('.genre-btn')?.classList.add('active');
+        alignGenreRow(activeBtn, el);
+      } else {
+        el.style.display = 'none';
+      }
+    });
+    activeGenre = 'all';
+  }
+
+  // 장르 버튼 이벤트
+  genreRows.forEach((row) => {
+    row.querySelectorAll('.genre-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        row.querySelectorAll('.genre-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeGenre = (btn as HTMLElement).dataset.genre!;
+        applyFilters();
+      });
+    });
+  });
+
+  // 시리즈 버튼 이벤트
+  seriesBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      seriesBtns.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeSeries = (btn as HTMLElement).dataset.series!;
+      showGenreRow(activeSeries, btn);
+      applyFilters();
+    });
+  });
+
+  // 기본값: 전체 선택
+  seriesBtns[0]?.classList.add('active');
+</script>
+
+<style>
+  .page-header {
+    padding: 3rem 0 2rem;
+  }
+
+  .page-header h1 {
+    font-size: 2rem;
+    color: var(--text-heading);
+    margin-bottom: 0.3rem;
+  }
+
+  .subtitle {
+    color: #8b949e;
+  }
+
+  .filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .filter-btn {
+    background: var(--bg-secondary);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+
+  .filter-btn:hover,
+  .filter-btn.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
+  /* 장르 서브필터: 작고 가벼운 텍스트 스타일 */
+  .genre-row {
+    position: relative;
+  }
+
+  .genre-btn {
+    background: transparent;
+    border: none;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.8rem;
+    color: #8b949e;
+    border-radius: 0;
+  }
+
+  .genre-btn:hover {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+  }
+
+  .genre-btn.active {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .year-group {
+    margin-bottom: 1rem;
+  }
+
+  .year-label {
+    font-size: 0.95rem;
+    color: #8b949e;
+    padding: 1.5rem 0 0.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+  }
+
+  .post-list {
+    list-style: none;
+  }
+
+  .post-list li {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .post-list a {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem 0;
+    color: var(--text);
+  }
+
+  .post-list a:hover h2 {
+    color: var(--accent);
+  }
+
+  .post-date {
+    font-size: 0.85rem;
+    color: #484f58;
+    flex-shrink: 0;
+    margin-left: 1rem;
+  }
+
+  h2 {
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: var(--text-heading);
+    transition: color 0.2s;
+  }
+</style>
