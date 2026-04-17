@@ -10,44 +10,46 @@ const posts = (await getCollection('grapher'))
 const featured = (await getCollection('aeho'))
   .filter((p) => !p.data.draft && typeof p.data.featured === 'number')
   .sort((a, b) => (a.data.featured as number) - (b.data.featured as number))
-  .slice(0, 5);
+  .slice(0, 3);
 ---
 
 <BaseLayout title="aehographer">
-  <section class="intro">
-    <div class="intro-text">
+  <section class="hero">
+    <div class="hero-left">
       <h1>aehographer</h1>
       <p class="subtitle">사랑하고 좋아하는 것들을 기록합니다.</p>
+      <img src="/aehographer-portrait.png" alt="aehographer" class="hero-illust" />
     </div>
-    <img src="/aehographer-portrait.png" alt="aehographer" class="intro-illust" />
-  </section>
 
-  {featured.length > 0 && (
-    <section class="featured">
-      <h2>요즘 좋아하는 것들</h2>
-      <div class="featured-grid">
-        {featured.map((item) => {
-          const sub = item.data.tags[1] || item.data.tags[0] || '';
-          return (
-            <a href={`/aeho/${item.id}`} class="card">
-              <div class="card-image">
-                {item.data.image ? (
-                  <img src={item.data.image} alt={item.data.title} />
-                ) : (
-                  <div class="card-placeholder">{sub}</div>
-                )}
-              </div>
-              <div class="card-info">
-                <span class="card-category">{sub}</span>
-                <h3>{item.data.title}</h3>
-              </div>
-            </a>
-          );
-        })}
+    {featured.length > 0 && (
+      <div class="hero-right">
+        <h2>요즘 좋아하는 것들</h2>
+        <ul class="featured-list">
+          {featured.map((item) => {
+            const sub = item.data.tags[1] || item.data.tags[0] || '';
+            return (
+              <li>
+                <a href={`/aeho/${item.id}`} class="featured-item">
+                  <div class="thumb">
+                    {item.data.image ? (
+                      <img src={item.data.image} alt={item.data.title} />
+                    ) : (
+                      <div class="thumb-placeholder">{sub}</div>
+                    )}
+                  </div>
+                  <div class="featured-meta">
+                    <span class="category">{sub}</span>
+                    <h3>{item.data.title}</h3>
+                  </div>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+        <a href="/aeho" class="view-all">aeho 전체 보기 →</a>
       </div>
-      <a href="/aeho" class="view-all">aeho 전체 보기 →</a>
-    </section>
-  )}
+    )}
+  </section>
 
   <section class="recent">
     <h2>최근 글</h2>
@@ -66,125 +68,121 @@ const featured = (await getCollection('aeho'))
 </BaseLayout>
 
 <style>
-  .intro {
-    padding: 4rem 0 3rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 2rem;
+  .hero {
+    padding: 3rem 0 3rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: start;
   }
 
-  .intro-text {
-    flex: 1;
-  }
-
-  .intro h1 {
+  .hero-left h1 {
     font-size: 2.4rem;
     color: var(--text-heading);
     margin-bottom: 0.5rem;
   }
 
   .subtitle {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     color: #8b949e;
-  }
-
-  .intro-illust {
-    width: 220px;
-    max-width: 35%;
-    height: auto;
-    flex-shrink: 0;
-    border-radius: 8px;
-  }
-
-  @media (max-width: 640px) {
-    .intro {
-      flex-direction: column-reverse;
-      align-items: flex-start;
-      padding: 2rem 0;
-    }
-
-    .intro-illust {
-      width: 180px;
-      max-width: 60%;
-      align-self: center;
-    }
-  }
-
-  .featured {
-    padding: 1rem 0 2rem;
-  }
-
-  .featured h2 {
-    font-size: 1.2rem;
-    color: var(--text-heading);
     margin-bottom: 1.5rem;
   }
 
-  .featured-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 1rem;
+  .hero-illust {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+    border-radius: 8px;
   }
 
-  .featured-grid .card {
+  .hero-right h2 {
+    font-size: 1.05rem;
+    color: var(--text-heading);
+    margin-bottom: 1rem;
+  }
+
+  .featured-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .featured-item {
+    display: flex;
+    gap: 0.9rem;
+    align-items: center;
     color: var(--text);
+    padding: 0.4rem 0;
     transition: transform 0.2s;
   }
 
-  .featured-grid .card:hover {
-    transform: translateY(-3px);
+  .featured-item:hover {
+    transform: translateX(3px);
   }
 
-  .featured-grid .card-image {
-    aspect-ratio: 3 / 4;
+  .thumb {
+    width: 56px;
+    height: 75px;
+    flex-shrink: 0;
+    border-radius: 5px;
     overflow: hidden;
-    border-radius: 6px;
     background: var(--bg-secondary);
   }
 
-  .featured-grid .card-image img {
+  .thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 6px;
   }
 
-  .featured-grid .card-placeholder {
+  .thumb-placeholder {
     width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #484f58;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
   }
 
-  .featured-grid .card-info {
-    padding: 0.55rem 0.15rem 0.2rem;
+  .featured-meta {
+    min-width: 0;
+    flex: 1;
   }
 
-  .featured-grid .card-category {
+  .category {
     font-size: 0.7rem;
     color: var(--accent);
   }
 
-  .featured-grid .card-info h3 {
-    font-size: 0.85rem;
+  .featured-meta h3 {
+    font-size: 0.9rem;
     color: var(--text-heading);
-    margin: 0.15rem 0;
+    margin: 0.15rem 0 0;
     line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .featured-item:hover h3 {
+    color: var(--accent);
   }
 
   @media (max-width: 720px) {
-    .featured-grid {
-      grid-template-columns: repeat(3, 1fr);
+    .hero {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      padding: 2rem 0;
     }
-  }
 
-  @media (max-width: 480px) {
-    .featured-grid {
-      grid-template-columns: repeat(2, 1fr);
+    .hero-illust {
+      max-width: 200px;
     }
   }
 
@@ -231,7 +229,7 @@ const featured = (await getCollection('aeho'))
 
   .view-all {
     display: inline-block;
-    margin-top: 1.5rem;
+    margin-top: 1.2rem;
     font-size: 0.9rem;
   }
 </style>

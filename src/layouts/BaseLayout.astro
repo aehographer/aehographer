@@ -13,7 +13,7 @@ const {
   image = '/og-image.png',
 } = Astro.props;
 
-const siteUrl = 'https://aehographer.com';
+const siteUrl = 'https://www.aehographer.com';
 const ogImage = image.startsWith('http') ? image : `${siteUrl}${image}`;
 const canonicalUrl = new URL(Astro.url.pathname, siteUrl).toString();
 ---
