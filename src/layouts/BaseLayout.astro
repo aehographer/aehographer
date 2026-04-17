@@ -3,9 +3,19 @@ import '../styles/global.css';
 
 interface Props {
   title?: string;
+  description?: string;
+  image?: string;
 }
 
-const { title = 'aehographer' } = Astro.props;
+const {
+  title = 'aehographer',
+  description = '사랑하고 좋아하는 것들을 기록합니다.',
+  image = '/og-image.png',
+} = Astro.props;
+
+const siteUrl = 'https://aehographer.com';
+const ogImage = image.startsWith('http') ? image : `${siteUrl}${image}`;
+const canonicalUrl = new URL(Astro.url.pathname, siteUrl).toString();
 ---
 
 <!doctype html>
@@ -14,7 +24,24 @@ const { title = 'aehographer' } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛵</text></svg>" />
+
+    <!-- Open Graph (카카오, 페이스북 등) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:site_name" content="aehographer" />
+    <meta property="og:locale" content="ko_KR" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
   </head>
   <body>
     <nav>

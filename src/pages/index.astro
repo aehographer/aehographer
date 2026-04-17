@@ -15,8 +15,11 @@ const featured = (await getCollection('aeho'))
 
 <BaseLayout title="aehographer">
   <section class="intro">
-    <h1>aehographer</h1>
-    <p class="subtitle">사랑하고 좋아하는 것들을 기록합니다.</p>
+    <div class="intro-text">
+      <h1>aehographer</h1>
+      <p class="subtitle">사랑하고 좋아하는 것들을 기록합니다.</p>
+    </div>
+    <img src="/aehographer-portrait.png" alt="aehographer" class="intro-illust" />
   </section>
 
   {featured.length > 0 && (
@@ -65,10 +68,18 @@ const featured = (await getCollection('aeho'))
 <style>
   .intro {
     padding: 4rem 0 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+
+  .intro-text {
+    flex: 1;
   }
 
   .intro h1 {
-    font-size: 2.2rem;
+    font-size: 2.4rem;
     color: var(--text-heading);
     margin-bottom: 0.5rem;
   }
@@ -76,6 +87,28 @@ const featured = (await getCollection('aeho'))
   .subtitle {
     font-size: 1.1rem;
     color: #8b949e;
+  }
+
+  .intro-illust {
+    width: 220px;
+    max-width: 35%;
+    height: auto;
+    flex-shrink: 0;
+    border-radius: 8px;
+  }
+
+  @media (max-width: 640px) {
+    .intro {
+      flex-direction: column-reverse;
+      align-items: flex-start;
+      padding: 2rem 0;
+    }
+
+    .intro-illust {
+      width: 180px;
+      max-width: 60%;
+      align-self: center;
+    }
   }
 
   .featured {
