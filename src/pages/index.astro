@@ -21,39 +21,56 @@ const featured = (await getCollection('aeho'))
       <img src="/aehographer-portrait.png" alt="aehographer" class="hero-illust" />
     </div>
 
-    {featured.length > 0 && (
-      <div class="hero-right">
-        <h2>요즘 좋아하는 것들</h2>
-        <ul class="featured-list">
-          {featured.map((item) => {
-            const sub = item.data.tags[1] || item.data.tags[0] || '';
-            return (
-              <li>
-                <a href={`/aeho/${item.id}`} class="featured-item">
-                  <div class="thumb">
-                    {item.data.image ? (
-                      <img src={item.data.image} alt={item.data.title} />
-                    ) : (
-                      <div class="thumb-placeholder">{sub}</div>
-                    )}
-                  </div>
-                  <div class="featured-meta">
-                    <span class="category">{sub}</span>
-                    <h3>{item.data.title}</h3>
-                  </div>
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-        <a href="/aeho" class="view-all">aeho 전체 보기 →</a>
-      </div>
-    )}
+    <div class="hero-right">
+      <p class="intro-body">
+        좋아하고 사랑하는 것이 많아 애호(愛好)에 성을 붙여서 <strong>애호박</strong>이라는 별명을 스스로에게 지어주었습니다.
+      </p>
+      <p class="intro-quote">
+        '삶이란 한 권의 책을 쓰는 일,<br />나만의 이야기를 써내려가는 일'
+      </p>
+      <p class="intro-body">
+        <a href="/aeho">세상의 이야기들</a>을 읽으며, <a href="/grapher">나만의 이야기</a>를 기록합니다.
+      </p>
+    </div>
   </section>
 
-  <section class="recent">
-    <h2>최근 글</h2>
-    <ul>
+  {featured.length > 0 && (
+    <section class="aeho-section">
+      <div class="section-head">
+        <h2>요즘 좋아하는 것들</h2>
+        <a href="/aeho" class="view-all">aeho 전체 보기 →</a>
+      </div>
+      <ul class="featured-list">
+        {featured.map((item) => {
+          const sub = item.data.tags[1] || item.data.tags[0] || '';
+          return (
+            <li>
+              <a href={`/aeho/${item.id}`} class="featured-item">
+                <div class="thumb">
+                  {item.data.image ? (
+                    <img src={item.data.image} alt={item.data.title} />
+                  ) : (
+                    <div class="thumb-placeholder">{sub}</div>
+                  )}
+                </div>
+                <div class="featured-meta">
+                  <span class="category">{sub}</span>
+                  <h3>{item.data.title}</h3>
+                </div>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  )}
+
+  <section class="grapher-section">
+    <div class="section-head">
+      <h2>최근 글</h2>
+      <a href="/grapher" class="view-all">grapher 전체 보기 →</a>
+    </div>
+    <ul class="recent-list">
       {posts.map((post) => (
         <li>
           <a href={`/grapher/${post.id}`}>
@@ -63,17 +80,16 @@ const featured = (await getCollection('aeho'))
         </li>
       ))}
     </ul>
-    <a href="/grapher" class="view-all">모든 글 보기 →</a>
   </section>
 </BaseLayout>
 
 <style>
   .hero {
-    padding: 3rem 0 3rem;
+    padding: 3rem 0;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 3rem;
-    align-items: start;
+    align-items: center;
   }
 
   .hero-left h1 {
@@ -95,19 +111,71 @@ const featured = (await getCollection('aeho'))
     border-radius: 8px;
   }
 
-  .hero-right h2 {
-    font-size: 1.05rem;
+  .hero-right {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+
+  .intro-body {
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1.8;
+    margin: 0;
+  }
+
+  .intro-body strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .intro-body a {
+    color: var(--accent);
+    border-bottom: 1px dashed var(--accent);
+  }
+
+  .intro-body a:hover {
+    border-bottom-style: solid;
+  }
+
+  .intro-quote {
+    font-size: 1.15rem;
     color: var(--text-heading);
-    margin-bottom: 1rem;
+    line-height: 1.6;
+    margin: 0;
+    padding-left: 1rem;
+    border-left: 3px solid var(--accent);
+    font-style: italic;
+  }
+
+  .aeho-section,
+  .grapher-section {
+    padding: 2rem 0;
+  }
+
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1.5rem;
+  }
+
+  .section-head h2 {
+    font-size: 1.2rem;
+    color: var(--text-heading);
+  }
+
+  .view-all {
+    font-size: 0.9rem;
   }
 
   .featured-list {
     list-style: none;
     padding: 0;
     margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
   }
 
   .featured-item {
@@ -124,8 +192,8 @@ const featured = (await getCollection('aeho'))
   }
 
   .thumb {
-    width: 56px;
-    height: 75px;
+    width: 64px;
+    height: 86px;
     flex-shrink: 0;
     border-radius: 5px;
     overflow: hidden;
@@ -174,37 +242,15 @@ const featured = (await getCollection('aeho'))
     color: var(--accent);
   }
 
-  @media (max-width: 720px) {
-    .hero {
-      grid-template-columns: 1fr;
-      gap: 2rem;
-      padding: 2rem 0;
-    }
-
-    .hero-illust {
-      max-width: 200px;
-    }
-  }
-
-  .recent {
-    padding: 2rem 0;
-  }
-
-  .recent h2 {
-    font-size: 1.2rem;
-    color: var(--text-heading);
-    margin-bottom: 1.5rem;
-  }
-
-  .recent ul {
+  .recent-list {
     list-style: none;
   }
 
-  .recent li {
+  .recent-list li {
     border-bottom: 1px solid var(--border);
   }
 
-  .recent li a {
+  .recent-list li a {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -212,7 +258,7 @@ const featured = (await getCollection('aeho'))
     color: var(--text);
   }
 
-  .recent li a:hover .post-title {
+  .recent-list li a:hover .post-title {
     color: var(--accent);
   }
 
@@ -227,9 +273,26 @@ const featured = (await getCollection('aeho'))
     margin-left: 1rem;
   }
 
-  .view-all {
-    display: inline-block;
-    margin-top: 1.2rem;
-    font-size: 0.9rem;
+  @media (max-width: 720px) {
+    .hero {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      padding: 2rem 0;
+    }
+
+    .hero-illust {
+      max-width: 200px;
+    }
+
+    .featured-list {
+      grid-template-columns: 1fr;
+      gap: 0.9rem;
+    }
+
+    .section-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
   }
 </style>
