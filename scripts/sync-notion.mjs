@@ -15,6 +15,24 @@ if (!NOTION_TOKEN) {
 const notion = new Client({ auth: NOTION_TOKEN });
 const n2m = new NotionToMarkdown({ notionClient: notion });
 
+// 콜아웃 블록을 <aside> 태그로 변환
+n2m.setCustomTransformer('callout', async (block) => {
+  const text = block.callout.rich_text.map((t) => t.plain_text).join('');
+  const icon = block.callout.icon?.emoji || '';
+  return `<aside>\n${icon} ${text}\n</aside>`;
+});
+
+// 중첩 paragraph(들여쓰기)를 <aside>로 변환
+const originalTransformer = n2m.pageToMarkdown.bind(n2m);
+const origToMd = n2m.toMarkdownString.bind(n2m);
+
+// notion-to-md가 children을 4칸 들여쓰기로 렌더링하므로, 후처리로 <aside>로 변환
+function postProcessMarkdown(md) {
+  return md.replace(/^( {4,})(.+)$/gm, (match, indent, text) => {
+    return `<aside>\n${text.trim()}\n</aside>`;
+  });
+}
+
 // --- 노션 속성 → frontmatter 변환 ---
 
 function getTitle(page) {
@@ -175,7 +193,7 @@ async function main() {
       // 새 파일: 노션 본문을 마크다운으로 변환해서 쓰기
       const mdBlocks = await n2m.pageToMarkdown(page.id);
       const mdResult = n2m.toMarkdownString(mdBlocks);
-      const body = (mdResult.parent || '').trim();
+      const body = postProcessMarkdown((mdResult.parent || '').trim());
       const content = serializeFrontmatter(fm) + '\n\n' + body + '\n';
       fs.writeFileSync(filePath, content, 'utf-8');
       created++;
