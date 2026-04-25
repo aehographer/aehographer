@@ -1,8 +1,8 @@
 ---
-featured: 1
 title: "AI블루"
 tags: ["책", "인문사회"]
 date: "2025-07-24"
+featured: 1
 author: "조경숙, 한지윤"
 publisher: "코난북스"
 ---

@@ -1,8 +1,8 @@
 ---
-featured: 3
 title: "AI, 글쓰기, 저작권"
 tags: ["책", "인문사회"]
 date: "2025-07-06"
+featured: 3
 image: "/images/aeho/AI, 글쓰기, 저작권/IMG_0488.jpeg"
 author: "정지우"
 publisher: "마름모"
