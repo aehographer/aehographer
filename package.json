@@ -9,9 +9,15 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "sync": "node --env-file=.env scripts/sync-notion.mjs",
+    "publish": "npm run sync && git add src/content/aeho && git commit -m 'Sync from Notion' && git push"
   },
   "dependencies": {
     "astro": "^6.1.5"
+  },
+  "devDependencies": {
+    "@notionhq/client": "^2.3.0",
+    "notion-to-md": "^3.1.9"
   }
 }

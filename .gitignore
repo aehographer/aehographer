@@ -23,5 +23,8 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 
+# claude code settings (contains API tokens)
+.claude/settings.json
+
 # 원본 노션 export 백업 (로컬만 보관)
 *.zip
