@@ -22,15 +22,38 @@ n2m.setCustomTransformer('callout', async (block) => {
   return `<aside>\n${icon} ${text}\n</aside>`;
 });
 
-// 중첩 paragraph(들여쓰기)를 <aside>로 변환
-const originalTransformer = n2m.pageToMarkdown.bind(n2m);
-const origToMd = n2m.toMarkdownString.bind(n2m);
+// --- 마크다운 후처리 ---
 
-// notion-to-md가 children을 4칸 들여쓰기로 렌더링하므로, 후처리로 <aside>로 변환
 function postProcessMarkdown(md) {
-  return md.replace(/^( {4,})(.+)$/gm, (match, indent, text) => {
-    return `<aside>\n${text.trim()}\n</aside>`;
-  });
+  // 1. 들여쓰기(중첩 paragraph) → 일반 문단으로 변환
+  md = md.replace(/^( {4,})(.+)$/gm, (match, indent, text) => text.trim());
+
+  // 2. 여우로운 감상 섹션 제거 (oneliner는 별도 추출)
+  md = md.replace(/## .*여우로운 감상[\s\S]*?---\n*/m, '');
+
+  // 연속 빈 줄 정리
+  md = md.replace(/\n{3,}/g, '\n\n');
+
+  return md;
+}
+
+// --- 여우로운 감상에서 한줄평 추출 ---
+
+async function extractOneliner(pageId) {
+  const blocks = await notion.blocks.children.list({ block_id: pageId, page_size: 100 });
+  for (let i = 0; i < blocks.results.length; i++) {
+    const b = blocks.results[i];
+    if (b.type === 'heading_2') {
+      const text = b.heading_2.rich_text.map((t) => t.plain_text).join('');
+      if (text.includes('여우로운 감상')) {
+        const next = blocks.results[i + 1];
+        if (next && next.type === 'quote') {
+          return next.quote.rich_text.map((t) => t.plain_text).join('').trim();
+        }
+      }
+    }
+  }
+  return '';
 }
 
 // --- 노션 속성 → frontmatter 변환 ---
@@ -53,15 +76,15 @@ function getSelect(page, name) {
 }
 
 function getDate(page) {
-  // 생성일(created_time)에서 날짜 추출
   return page.created_time.split('T')[0];
 }
 
-function buildFrontmatter(page, existing) {
+function buildFrontmatter(page, existing, oneliner) {
   const title = getTitle(page);
   const author = getText(page, '지은이');
   const publisher = getText(page, '출판사');
   const category = getSelect(page, '카테고리');
+  const notionOneliner = getText(page, '한줄평');
   const date = existing.date || getDate(page);
   const tags = category ? ['책', category] : ['책'];
 
@@ -77,13 +100,14 @@ function buildFrontmatter(page, existing) {
   if (existing.imagePosition) fm.imagePosition = existing.imagePosition;
   if (existing.imageFit) fm.imageFit = existing.imageFit;
   if (existing.hideHeader) fm.hideHeader = existing.hideHeader;
-  if (existing.oneliner) fm.oneliner = existing.oneliner;
-  if (existing.memo) fm.memo = existing.memo;
 
+  // 한줄평 우선순위: 노션 한줄평 속성 > 여우로운 감상에서 추출 > 기존 파일
+  const resolvedOneliner = notionOneliner || oneliner || existing.oneliner || '';
+  if (resolvedOneliner) fm.oneliner = resolvedOneliner;
+
+  if (existing.memo) fm.memo = existing.memo;
   if (author) fm.author = author;
   if (publisher) fm.publisher = publisher;
-
-  // 기존 link 보존, 노션 링크 파일은 나중에 확장 가능
   if (existing.link) fm.link = existing.link;
 
   return fm;
@@ -122,7 +146,6 @@ function parseExistingFrontmatter(filePath) {
     const m = line.match(/^(\w+):\s*(.+)$/);
     if (!m) continue;
     const [, key, raw] = m;
-    // 배열
     if (raw.startsWith('[')) {
       result[key] = [...raw.matchAll(/"([^"]+)"/g)].map((r) => r[1]);
     } else if (raw === 'true' || raw === 'false') {
@@ -139,14 +162,12 @@ function parseExistingFrontmatter(filePath) {
 // --- 파일명 안전화 ---
 
 function safeFilename(title) {
-  // 파일시스템에서 쓸 수 없는 문자 제거
   return title.replace(/[/\\:]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 // --- 메인 ---
 
 async function main() {
-  // 1. 노션 DB에서 모든 페이지 가져오기
   console.log('노션 DB에서 페이지를 가져오는 중...');
   const pages = [];
   let cursor;
@@ -162,7 +183,6 @@ async function main() {
 
   console.log(`총 ${pages.length}개 페이지 발견`);
 
-  // 2. 기존 파일 목록
   const existingFiles = new Set(
     fs.readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.md'))
   );
@@ -180,17 +200,18 @@ async function main() {
 
     const filename = safeFilename(title) + '.md';
     const filePath = path.join(CONTENT_DIR, filename);
-
     const isNew = !fs.existsSync(filePath);
 
-    // 기존 frontmatter 읽기 (있으면 보존)
+    // 여우로운 감상에서 한줄평 추출
+    const oneliner = await extractOneliner(page.id);
+
+    // 기존 frontmatter 읽기
     const existing = parseExistingFrontmatter(filePath);
 
     // frontmatter 생성
-    const fm = buildFrontmatter(page, existing);
+    const fm = buildFrontmatter(page, existing, oneliner);
 
     if (isNew) {
-      // 새 파일: 노션 본문을 마크다운으로 변환해서 쓰기
       const mdBlocks = await n2m.pageToMarkdown(page.id);
       const mdResult = n2m.toMarkdownString(mdBlocks);
       const body = postProcessMarkdown((mdResult.parent || '').trim());
