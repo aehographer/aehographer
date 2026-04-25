@@ -274,6 +274,10 @@ const subCategoriesMap: Record<string, string[]> = {
     font-size: 0.75rem;
     color: #8b949e;
     line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   @media (max-width: 960px) {
