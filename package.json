@@ -11,7 +11,9 @@
     "preview": "astro preview",
     "astro": "astro",
     "sync": "node --env-file=.env scripts/sync-notion.mjs",
-    "publish": "npm run sync && git add src/content/aeho && git commit -m 'Sync from Notion' && git push"
+    "sync:grapher": "node --env-file=.env scripts/sync-grapher.mjs",
+    "publish": "npm run sync && git add src/content/aeho && git commit -m 'Sync from Notion' && git push",
+    "publish:grapher": "npm run sync:grapher && git add src/content/grapher && git commit -m 'Sync grapher from Notion' && git push"
   },
   "dependencies": {
     "astro": "^6.1.5"

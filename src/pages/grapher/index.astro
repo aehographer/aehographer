@@ -6,7 +6,7 @@ const posts = (await getCollection('grapher'))
   .filter((p) => !p.data.draft)
   .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
 
-const seriesTags = ['전체', '항해일지', '뼈문과표류기', '뮤덕부정기', '콘텐츠유영기', '셀프유배기'] as const;
+const seriesTags = ['전체', '항해일지', '뼈문과표류기', '연뮤덕부정기', '콘텐츠유영기', '셀프유배기'] as const;
 
 // 시리즈별 장르 태그 매핑
 const genresBySeriesMap: Record<string, string[]> = {};

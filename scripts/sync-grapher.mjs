@@ -4,8 +4,8 @@ import fs from 'fs';
 import path from 'path';
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
-const DB_ID = 'ee8ca436fbc842e8bb1cf231bce0751f';
-const CONTENT_DIR = 'src/content/aeho';
+const DB_ID = '37e493e8363549bda22f7a59d9301975'; // ✍️ grapher
+const CONTENT_DIR = 'src/content/grapher';
 
 if (!NOTION_TOKEN) {
   console.error('NOTION_TOKEN 환경변수가 필요합니다.');
@@ -15,7 +15,21 @@ if (!NOTION_TOKEN) {
 const notion = new Client({ auth: NOTION_TOKEN });
 const n2m = new NotionToMarkdown({ notionClient: notion });
 
-// 콜아웃 블록을 <aside> 태그로 변환
+// --- 시리즈+장르 → 파일명 prefix 매핑 ---
+// 사이트 frontmatter에는 한글 그대로 들어가고, 파일명만 영문 코드로 변환
+const FILE_PREFIX_MAP = {
+  '뼈문과표류기': () => 'axdrift',
+  '셀프유배기': () => 'exile',
+  '항해일지': () => 'logbook',
+  '연뮤덕부정기': (genre) => (genre === '연극' ? 'theatre' : 'musical'),
+  '콘텐츠유영기': (genre) => {
+    if (genre === '영화') return 'movie';
+    if (genre === '전시') return 'art';
+    return 'content'; // fallback
+  },
+};
+
+// 콜아웃 블록을 <aside> 태그로 변환 (aeho와 동일)
 n2m.setCustomTransformer('callout', async (block) => {
   const text = block.callout.rich_text.map((t) => t.plain_text).join('');
   const icon = block.callout.icon?.emoji || '';
@@ -25,41 +39,16 @@ n2m.setCustomTransformer('callout', async (block) => {
 // --- 마크다운 후처리 ---
 
 function postProcessMarkdown(md) {
-  // 1. 들여쓰기(중첩 paragraph) → 일반 문단으로 변환
   md = md.replace(/^( {4,})(.+)$/gm, (match, indent, text) => text.trim());
-
-  // 2. 여우로운 감상 섹션 제거 (oneliner는 별도 추출)
-  md = md.replace(/## .*여우로운 감상[\s\S]*?---\n*/m, '');
-
-  // 연속 빈 줄 정리
   md = md.replace(/\n{3,}/g, '\n\n');
-
   return md;
-}
-
-// --- 여우로운 감상에서 한줄평 추출 ---
-
-async function extractOneliner(pageId) {
-  const blocks = await notion.blocks.children.list({ block_id: pageId, page_size: 100 });
-  for (let i = 0; i < blocks.results.length; i++) {
-    const b = blocks.results[i];
-    if (b.type === 'heading_2') {
-      const text = b.heading_2.rich_text.map((t) => t.plain_text).join('');
-      if (text.includes('여우로운 감상')) {
-        const next = blocks.results[i + 1];
-        if (next && next.type === 'quote') {
-          return next.quote.rich_text.map((t) => t.plain_text).join('').trim();
-        }
-      }
-    }
-  }
-  return '';
 }
 
 // --- 노션 속성 → frontmatter 변환 ---
 
 function getTitle(page) {
-  const prop = page.properties['책 제목'];
+  const prop = page.properties['제목'];
+  if (!prop || prop.type !== 'title') return '';
   return prop.title.map((t) => t.plain_text).join('');
 }
 
@@ -75,42 +64,82 @@ function getSelect(page, name) {
   return prop.select.name;
 }
 
-function getDate(page) {
-  return page.created_time.split('T')[0];
+function getMultiSelect(page, name) {
+  const prop = page.properties[name];
+  if (!prop || prop.type !== 'multi_select') return [];
+  return prop.multi_select.map((s) => s.name);
 }
 
-function buildFrontmatter(page, existing, oneliner) {
+function getCheckbox(page, name) {
+  const prop = page.properties[name];
+  if (!prop || prop.type !== 'checkbox') return false;
+  return prop.checkbox;
+}
+
+function getDate(page, name) {
+  const prop = page.properties[name];
+  if (!prop || prop.type !== 'date' || !prop.date) return '';
+  return prop.date.start;
+}
+
+// --- 날짜 → YYMMDD 변환 ---
+
+function toYYMMDD(isoDate) {
+  if (!isoDate) return '';
+  const [y, m, d] = isoDate.split('-');
+  return `${y.slice(2)}${m}${d}`;
+}
+
+// --- 파일명 생성 ---
+
+function buildFilename(page, series, genre) {
+  const customSlug = getText(page, '슬러그');
+  if (customSlug) {
+    return customSlug.endsWith('.md') ? customSlug : `${customSlug}.md`;
+  }
+
+  const date = getDate(page, '날짜');
+  const yymmdd = toYYMMDD(date);
+  const prefixFn = FILE_PREFIX_MAP[series];
+  const prefix = prefixFn ? prefixFn(genre) : 'misc';
+
+  if (!yymmdd) {
+    // 날짜가 없으면 제목 기반 fallback
+    return `${safeFilename(getTitle(page))}.md`;
+  }
+  return `aeho-${prefix}-${yymmdd}.md`;
+}
+
+function safeFilename(title) {
+  return title.replace(/[/\\:]/g, ' ').replace(/\s+/g, '-').trim();
+}
+
+// --- frontmatter 빌드 ---
+// 사이트 호환을 위해 tags = [시리즈, 장르, ...추가태그] 순서로 생성
+
+function buildFrontmatter(page) {
   const title = getTitle(page);
-  const author = getText(page, '지은이');
-  const publisher = getText(page, '출판사');
-  const category = getSelect(page, '카테고리');
-  const notionOneliner = getText(page, '한줄평');
-  const date = existing.date || getDate(page);
-  const tags = category ? ['책', category] : ['책'];
+  const date = getDate(page, '날짜') || page.created_time.split('T')[0];
+  const series = getSelect(page, '시리즈');
+  const genre = getSelect(page, '장르');
+  const extraTags = getMultiSelect(page, '태그');
+  const published = getCheckbox(page, '발행');
 
-  const fm = {
+  // tags[0]=시리즈, tags[1]=장르, 그 뒤로 추가 태그
+  // 중복 제거 (시리즈/장르가 추가 태그에 이미 있으면 빼기)
+  const tags = [];
+  if (series) tags.push(series);
+  if (genre) tags.push(genre);
+  for (const t of extraTags) {
+    if (!tags.includes(t)) tags.push(t);
+  }
+
+  return {
     title,
-    tags,
     date,
+    tags,
+    draft: !published,
   };
-
-  // 사이트 전용 필드 보존 (기존 파일에 있던 값)
-  if (existing.featured != null) fm.featured = existing.featured;
-  if (existing.image) fm.image = existing.image;
-  if (existing.imagePosition) fm.imagePosition = existing.imagePosition;
-  if (existing.imageFit) fm.imageFit = existing.imageFit;
-  if (existing.hideHeader) fm.hideHeader = existing.hideHeader;
-
-  // 한줄평 우선순위: 노션 한줄평 속성 > 여우로운 감상에서 추출 > 기존 파일
-  const resolvedOneliner = notionOneliner || oneliner || existing.oneliner || '';
-  if (resolvedOneliner) fm.oneliner = resolvedOneliner;
-
-  if (existing.memo) fm.memo = existing.memo;
-  if (author) fm.author = author;
-  if (publisher) fm.publisher = publisher;
-  if (existing.link) fm.link = existing.link;
-
-  return fm;
 }
 
 // --- frontmatter 직렬화 ---
@@ -133,42 +162,14 @@ function serializeFrontmatter(fm) {
   return lines.join('\n');
 }
 
-// --- 기존 파일에서 frontmatter 파싱 ---
-
-function parseExistingFrontmatter(filePath) {
-  if (!fs.existsSync(filePath)) return {};
-  const content = fs.readFileSync(filePath, 'utf-8');
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) return {};
-
-  const result = {};
-  for (const line of match[1].split('\n')) {
-    const m = line.match(/^(\w+):\s*(.+)$/);
-    if (!m) continue;
-    const [, key, raw] = m;
-    if (raw.startsWith('[')) {
-      result[key] = [...raw.matchAll(/"([^"]+)"/g)].map((r) => r[1]);
-    } else if (raw === 'true' || raw === 'false') {
-      result[key] = raw === 'true';
-    } else if (/^\d+$/.test(raw)) {
-      result[key] = parseInt(raw, 10);
-    } else {
-      result[key] = raw.replace(/^"(.*)"$/, '$1');
-    }
-  }
-  return result;
-}
-
-// --- 파일명 안전화 ---
-
-function safeFilename(title) {
-  return title.replace(/[/\\:]/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
 // --- 메인 ---
 
 async function main() {
-  console.log('노션 DB에서 페이지를 가져오는 중...');
+  if (!fs.existsSync(CONTENT_DIR)) {
+    fs.mkdirSync(CONTENT_DIR, { recursive: true });
+  }
+
+  console.log('노션 그래퍼 DB에서 페이지를 가져오는 중...');
   const pages = [];
   let cursor;
   do {
@@ -183,10 +184,6 @@ async function main() {
 
   console.log(`총 ${pages.length}개 페이지 발견`);
 
-  const existingFiles = new Set(
-    fs.readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.md'))
-  );
-
   let created = 0;
   let updated = 0;
   let skipped = 0;
@@ -198,11 +195,12 @@ async function main() {
       continue;
     }
 
-    const filename = safeFilename(title) + '.md';
+    const series = getSelect(page, '시리즈');
+    const genre = getSelect(page, '장르');
+    const filename = buildFilename(page, series, genre);
     const filePath = path.join(CONTENT_DIR, filename);
     const fileExists = fs.existsSync(filePath);
 
-    // 노션에서 수정된 페이지인지 확인 (기존 파일의 mtime과 비교)
     let notionUpdated = false;
     if (fileExists) {
       const localMtime = fs.statSync(filePath).mtime;
@@ -210,7 +208,6 @@ async function main() {
       notionUpdated = notionEdited > localMtime;
     }
 
-    // 로컬 이미지 경로가 있는 파일은 본문 보호 (수동 교체한 이미지가 덮어씌워지는 것 방지)
     let hasLocalImages = false;
     if (fileExists) {
       const content = fs.readFileSync(filePath, 'utf-8');
@@ -219,14 +216,7 @@ async function main() {
 
     const needBody = !fileExists || (notionUpdated && !hasLocalImages);
 
-    // 여우로운 감상에서 한줄평 추출
-    const oneliner = await extractOneliner(page.id);
-
-    // 기존 frontmatter 읽기
-    const existing = parseExistingFrontmatter(filePath);
-
-    // frontmatter 생성
-    const fm = buildFrontmatter(page, existing, oneliner);
+    const fm = buildFrontmatter(page);
 
     if (needBody) {
       const mdBlocks = await n2m.pageToMarkdown(page.id);
@@ -242,7 +232,6 @@ async function main() {
         console.log(`  ↻ ${filename} (노션에서 수정됨)`);
       }
     } else {
-      // 기존 파일: frontmatter만 교체, 본문은 보존
       const oldContent = fs.readFileSync(filePath, 'utf-8');
       const fmEnd = oldContent.match(/^---\n[\s\S]*?\n---\n/);
       const existingBody = fmEnd ? oldContent.slice(fmEnd[0].length) : '';
