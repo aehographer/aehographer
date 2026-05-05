@@ -12,6 +12,7 @@
     "astro": "astro",
     "sync": "node --env-file=.env scripts/sync-notion.mjs",
     "sync:grapher": "node --env-file=.env scripts/sync-grapher.mjs",
+    "import:grapher": "node --env-file=.env scripts/import-to-notion.mjs",
     "publish": "npm run sync && git add src/content/aeho && git commit -m 'Sync from Notion' && git push",
     "publish:grapher": "npm run sync:grapher && git add src/content/grapher && git commit -m 'Sync grapher from Notion' && git push"
   },

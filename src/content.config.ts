@@ -8,6 +8,7 @@ const grapher = defineCollection({
     date: z.string(),
     tags: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
+    lockedBody: z.boolean().optional(), // true면 sync 시 본문 보존 (frontmatter만 업데이트)
   }),
 });
 

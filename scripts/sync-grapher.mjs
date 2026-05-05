@@ -114,10 +114,34 @@ function safeFilename(title) {
   return title.replace(/[/\\:]/g, ' ').replace(/\s+/g, '-').trim();
 }
 
+// --- 기존 파일 frontmatter 파싱 (lockedBody 등 사이트 전용 필드 보존용) ---
+
+function parseExistingFrontmatter(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return {};
+
+  const result = {};
+  for (const line of match[1].split('\n')) {
+    const m = line.match(/^(\w+):\s*(.+)$/);
+    if (!m) continue;
+    const [, key, raw] = m;
+    if (raw === 'true' || raw === 'false') {
+      result[key] = raw === 'true';
+    } else if (/^\d+$/.test(raw)) {
+      result[key] = parseInt(raw, 10);
+    } else {
+      result[key] = raw.replace(/^"(.*)"$/, '$1');
+    }
+  }
+  return result;
+}
+
 // --- frontmatter 빌드 ---
 // 사이트 호환을 위해 tags = [시리즈, 장르, ...추가태그] 순서로 생성
 
-function buildFrontmatter(page) {
+function buildFrontmatter(page, existing) {
   const title = getTitle(page);
   const date = getDate(page, '날짜') || page.created_time.split('T')[0];
   const series = getSelect(page, '시리즈');
@@ -126,7 +150,6 @@ function buildFrontmatter(page) {
   const published = getCheckbox(page, '발행');
 
   // tags[0]=시리즈, tags[1]=장르, 그 뒤로 추가 태그
-  // 중복 제거 (시리즈/장르가 추가 태그에 이미 있으면 빼기)
   const tags = [];
   if (series) tags.push(series);
   if (genre) tags.push(genre);
@@ -134,12 +157,17 @@ function buildFrontmatter(page) {
     if (!tags.includes(t)) tags.push(t);
   }
 
-  return {
+  const fm = {
     title,
     date,
     tags,
     draft: !published,
   };
+
+  // 사이트 전용 필드는 기존 파일에서 가져와 보존
+  if (existing.lockedBody === true) fm.lockedBody = true;
+
+  return fm;
 }
 
 // --- frontmatter 직렬화 ---
@@ -209,14 +237,18 @@ async function main() {
     }
 
     let hasLocalImages = false;
+    let isLocked = false;
     if (fileExists) {
       const content = fs.readFileSync(filePath, 'utf-8');
       hasLocalImages = content.includes('](/images/');
+      // frontmatter의 lockedBody: true 체크 (본문 절대 보호 마커)
+      isLocked = /^lockedBody:\s*true$/m.test(content.match(/^---\n([\s\S]*?)\n---/)?.[1] || '');
     }
 
-    const needBody = !fileExists || (notionUpdated && !hasLocalImages);
+    const needBody = !fileExists || (notionUpdated && !hasLocalImages && !isLocked);
 
-    const fm = buildFrontmatter(page);
+    const existing = parseExistingFrontmatter(filePath);
+    const fm = buildFrontmatter(page, existing);
 
     if (needBody) {
       const mdBlocks = await n2m.pageToMarkdown(page.id);
