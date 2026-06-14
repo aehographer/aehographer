@@ -56,6 +56,49 @@ async function extractOneliner(pageId) {
   return '';
 }
 
+// --- 본문 속 노션 이미지 → 로컬 저장 ---
+// 노션 이미지 URL은 1시간 후 만료되는 임시 링크라, 로컬(public/images/aeho/책제목/)에
+// 내려받아 영구 보존하고 마크다운 경로를 로컬로 바꾼다.
+
+async function downloadBodyImages(md, title) {
+  const dir = path.join('public/images/aeho', title);
+  let firstImage = null;
+  const matches = [...md.matchAll(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g)];
+  let idx = 0;
+
+  for (const m of matches) {
+    const [full, alt, url] = m;
+    idx++;
+
+    // 파일명 결정: URL 경로 끝 > alt 텍스트 > image-N.jpg
+    let fname = decodeURIComponent((url.split('?')[0].split('/').pop()) || '');
+    if (!fname || !/\.[a-zA-Z0-9]+$/.test(fname)) {
+      fname = alt && /\.[a-zA-Z0-9]+$/.test(alt) ? alt : `image-${idx}.jpg`;
+    }
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.log(`    ! 이미지 다운로드 실패(${res.status}): ${fname}`);
+        continue;
+      }
+      const buf = Buffer.from(await res.arrayBuffer());
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, fname), buf);
+
+      const localRaw = `/images/aeho/${title}/${fname}`;
+      const localEnc = `/images/aeho/${encodeURIComponent(title)}/${encodeURIComponent(fname)}`;
+      md = md.replace(full, `![${fname}](${localEnc})`);
+      if (!firstImage) firstImage = localRaw;
+      console.log(`    ↓ 이미지 저장: ${title}/${fname}`);
+    } catch (e) {
+      console.log(`    ! 이미지 오류: ${fname} (${e.message})`);
+    }
+  }
+
+  return { md, firstImage };
+}
+
 // --- 노션 속성 → frontmatter 변환 ---
 
 function getTitle(page) {
@@ -79,7 +122,7 @@ function getDate(page) {
   return page.created_time.split('T')[0];
 }
 
-function buildFrontmatter(page, existing, oneliner) {
+function buildFrontmatter(page, existing, oneliner, fallbackImage) {
   const title = getTitle(page);
   const author = getText(page, '지은이');
   const publisher = getText(page, '출판사');
@@ -96,7 +139,9 @@ function buildFrontmatter(page, existing, oneliner) {
 
   // 사이트 전용 필드 보존 (기존 파일에 있던 값)
   if (existing.featured != null) fm.featured = existing.featured;
+  // 헤더 이미지: 기존 파일 값 우선, 없으면 새로 받은 노션 이미지 사용
   if (existing.image) fm.image = existing.image;
+  else if (fallbackImage) fm.image = fallbackImage;
   if (existing.imagePosition) fm.imagePosition = existing.imagePosition;
   if (existing.imageFit) fm.imageFit = existing.imageFit;
   if (existing.hideHeader) fm.hideHeader = existing.hideHeader;
@@ -225,13 +270,18 @@ async function main() {
     // 기존 frontmatter 읽기
     const existing = parseExistingFrontmatter(filePath);
 
-    // frontmatter 생성
-    const fm = buildFrontmatter(page, existing, oneliner);
-
     if (needBody) {
       const mdBlocks = await n2m.pageToMarkdown(page.id);
       const mdResult = n2m.toMarkdownString(mdBlocks);
-      const body = postProcessMarkdown((mdResult.parent || '').trim());
+      let body = postProcessMarkdown((mdResult.parent || '').trim());
+
+      // 본문 속 노션 이미지를 로컬로 내려받고 경로 교체
+      const imgResult = await downloadBodyImages(body, title);
+      body = imgResult.md;
+
+      // 헤더 이미지 자동 설정 (새로 받은 첫 이미지)
+      const fm = buildFrontmatter(page, existing, oneliner, imgResult.firstImage);
+
       const content = serializeFrontmatter(fm) + '\n\n' + body + '\n';
       fs.writeFileSync(filePath, content, 'utf-8');
       if (!fileExists) {
@@ -242,6 +292,8 @@ async function main() {
         console.log(`  ↻ ${filename} (노션에서 수정됨)`);
       }
     } else {
+      // frontmatter 생성 (본문 보존 케이스)
+      const fm = buildFrontmatter(page, existing, oneliner);
       // 기존 파일: frontmatter만 교체, 본문은 보존
       const oldContent = fs.readFileSync(filePath, 'utf-8');
       const fmEnd = oldContent.match(/^---\n[\s\S]*?\n---\n/);
