@@ -4,14 +4,19 @@ import { getCollection } from 'astro:content';
 
 const items = (await getCollection('aeho'))
   .filter((item) => !item.data.draft)
-  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+  .sort((a, b) => {
+    // 표지 이미지 있는 항목 우선, 그 안에서는 최신순
+    const imgDiff = (b.data.image ? 1 : 0) - (a.data.image ? 1 : 0);
+    if (imgDiff !== 0) return imgDiff;
+    return new Date(b.data.date).getTime() - new Date(a.data.date).getTime();
+  });
 
 const mainCategories = ['전체', '책', '공연', '전시', '영화', '기타'] as const;
 
 // 대분류별 소분류 매핑 (하위 분류가 있는 것만)
 const subCategoriesMap: Record<string, string[]> = {
   '책': ['소설', '에세이', '인문사회', '문화예술', '경영경제', '자기계발', '기타'],
-  '공연': ['뮤지컬', '연극', '클래식', '발레', '창극/국악'],
+  '공연': ['뮤지컬', '연극', '클래식', '발레', '창극/국악', '콘서트'],
   '전시': ['미술', '사진', '디자인', '미디어아트', '기타'],
   '영화': ['극영화', '다큐멘터리', '애니메이션', '단편/독립'],
   '기타': ['영상', '음악', '공간', '강연'],
