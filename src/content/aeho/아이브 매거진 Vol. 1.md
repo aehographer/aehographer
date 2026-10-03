@@ -4,6 +4,7 @@ tags: ["책", "기타"]
 date: "2024-10-30"
 author: "인터뷰어 | 요조"
 publisher: "아이브매거진"
+draft: true
 ---
 
 ## 🔖 책갈피

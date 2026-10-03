@@ -4,6 +4,7 @@ tags: ["책", "에세이"]
 date: "2026-03-10"
 author: "배명훈"
 publisher: "문학과지성사"
+draft: true
 ---
 
 ## 🔖 책갈피
