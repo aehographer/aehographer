@@ -18,7 +18,17 @@ if (!NOTION_TOKEN) {
   process.exit(1);
 }
 
-const notion = new Client({ auth: NOTION_TOKEN });
+// 429(rate limit)·5xx는 Retry-After만큼 기다렸다 재시도
+async function retryingFetch(url, init, tries = 6) {
+  const res = await fetch(url, init);
+  if ((res.status === 429 || res.status >= 500) && tries > 0) {
+    const wait = (Number(res.headers.get('retry-after')) || 2) * 1000;
+    await new Promise((r) => setTimeout(r, wait));
+    return retryingFetch(url, init, tries - 1);
+  }
+  return res;
+}
+const notion = new Client({ auth: NOTION_TOKEN, fetch: retryingFetch });
 const n2m = new NotionToMarkdown({ notionClient: notion });
 
 // 콜아웃 블록을 <aside> 태그로 변환
