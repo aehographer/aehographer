@@ -8,6 +8,7 @@ import { Client } from '@notionhq/client';
 import { NotionToMarkdown } from 'notion-to-md';
 import fs from 'fs';
 import path from 'path';
+import { execFileSync } from 'child_process';
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const AEHO_DB = '83a662be75774012b42bc4f0c9ac3493';
@@ -94,6 +95,14 @@ async function downloadBodyImages(md, dirName) {
       const buf = Buffer.from(await res.arrayBuffer());
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, fname), buf);
+
+      // HEIC는 사파리 외 브라우저에서 안 보이므로 JPG로 변환 (macOS sips)
+      if (/\.hei[cf]$/i.test(fname)) {
+        const heicPath = path.join(dir, fname);
+        fname = fname.replace(/\.hei[cf]$/i, '.jpg');
+        execFileSync('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '85', heicPath, '--out', path.join(dir, fname)], { stdio: 'ignore' });
+        fs.unlinkSync(heicPath);
+      }
 
       const localRaw = `/images/aeho/${dirName}/${fname}`;
       const localEnc = `/images/aeho/${encodeURIComponent(dirName)}/${encodeURIComponent(fname)}`;

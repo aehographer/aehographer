@@ -2,12 +2,12 @@
 title: "MSV 집중력"
 tags: ["책"]
 date: "2026-07-31"
-image: "/images/aeho/MSV 집중력/IMG_4658.heic"
+image: "/images/aeho/MSV 집중력/IMG_4658.jpg"
 author: "-"
 publisher: "미션잇"
 ---
 
-![IMG_4658.heic](/images/aeho/MSV%20%EC%A7%91%EC%A4%91%EB%A0%A5/IMG_4658.heic)
+![IMG_4658.jpg](/images/aeho/MSV%20%EC%A7%91%EC%A4%91%EB%A0%A5/IMG_4658.jpg)
 
 ## 🔖 책갈피
 
