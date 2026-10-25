@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/aeho/bookhedgehog", "destination": "https://bookhedgehog.vercel.app/" },
+    { "source": "/aeho/bookhedgehog/:path*", "destination": "https://bookhedgehog.vercel.app/:path*" }
+  ]
+}
